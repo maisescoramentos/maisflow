@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum ProjetoStatus {
+  ATIVO
+  PAUSADO
+  CONCLUIDO
+  ARQUIVADO
+}
+
+enum TarefaStatus {
+  BACKLOG
+  A_FAZER
+  EM_ANDAMENTO
+  REVISAO
+  CONCLUIDO
+}
+
+enum Prioridade {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(MEMBER)
+  avatarUrl String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projetosMembro     ProjetoMembro[]
+  tarefasResponsavel TarefaResponsavel[]
+  comentarios        Comentario[]
+  notificacoes       Notificacao[]
+  entradasDiario     EntradaDiario[]
+}
+
+model Projeto {
+  id           String        @id @default(cuid())
+  nome         String
+  descricao    String?
+  clienteNome  String?
+  clienteEmail String?
+  status       ProjetoStatus @default(ATIVO)
+  cor          String        @default("#1400FF")
+  portalToken  String?       @unique
+  portalAtivo  Boolean       @default(false)
+  dataInicio   DateTime?
+  dataFim      DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  membros ProjetoMembro[]
+  tarefas Tarefa[]
+}
+
+model ProjetoMembro {
+  id        String   @id @default(cuid())
+  projetoId String
+  userId    String
+  isOwner   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  projeto Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projetoId, userId])
+}
+
+model Tarefa {
+  id         String       @id @default(cuid())
+  titulo     String
+  descricao  String?
+  status     TarefaStatus @default(A_FAZER)
+  prioridade Prioridade   @default(MEDIA)
+  ordem      Int          @default(0)
+  dataVenc   DateTime?
+  projetoId  String
+  parentId   String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  projeto      Projeto             @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  parent       Tarefa?             @relation("Subtarefas", fields: [parentId], references: [id])
+  subtarefas   Tarefa[]            @relation("Subtarefas")
+  responsaveis TarefaResponsavel[]
+  comentarios  Comentario[]
+  anexos       Anexo[]
+}
+
+model TarefaResponsavel {
+  id       String @id @default(cuid())
+  tarefaId String
+  userId   String
+
+  tarefa Tarefa @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tarefaId, userId])
+}
+
+model Comentario {
+  id        String   @id @default(cuid())
+  conteudo  String
+  tarefaId  String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tarefa Tarefa @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model Anexo {
+  id        String   @id @default(cuid())
+  nome      String
+  url       String
+  tamanho   Int
+  tipo      String
+  tarefaId  String
+  createdAt DateTime @default(now())
+
+  tarefa Tarefa @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+}
+
+model EntradaDiario {
+  id        String   @id @default(cuid())
+  titulo    String
+  conteudo  String
+  clima     String?
+  workers   Int?
+  fotos     String[]
+  projetoId String?
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Notificacao {
+  id        String   @id @default(cuid())
+  titulo    String
+  mensagem  String
+  lida      Boolean  @default(false)
+  link      String?
+  userId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
