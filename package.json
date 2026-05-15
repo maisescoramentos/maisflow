@@ -27,6 +27,7 @@
     "@radix-ui/react-select": "^2.1.6",
     "@radix-ui/react-tabs": "^1.1.7",
     "@radix-ui/react-tooltip": "^1.2.7",
+    "@vercel/blob": "^2.3.3",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

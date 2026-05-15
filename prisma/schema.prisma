@@ -47,6 +47,7 @@ model User {
 
   projetosMembro     ProjetoMembro[]
   tarefasResponsavel TarefaResponsavel[]
+  tarefasCriadas     Tarefa[]            @relation("TarefasCriadas")
   comentarios        Comentario[]
   notificacoes       Notificacao[]
   entradasDiario     EntradaDiario[]
@@ -94,6 +95,7 @@ model Tarefa {
   dataVenc   DateTime?
   projetoId  String
   parentId   String?
+  creatorId  String?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -103,6 +105,7 @@ model Tarefa {
   responsaveis TarefaResponsavel[]
   comentarios  Comentario[]
   anexos       Anexo[]
+  creator      User?               @relation("TarefasCriadas", fields: [creatorId], references: [id])
 }
 
 model TarefaResponsavel {
@@ -121,6 +124,9 @@ model Comentario {
   conteudo  String
   tarefaId  String
   userId    String
+  anexoUrl  String?
+  anexoNome String?
+  anexoTipo String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

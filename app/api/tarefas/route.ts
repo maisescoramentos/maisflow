@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { projetoId, ...rest } = body;
+  const { projetoId, anexos, ...rest } = body;
 
   if (!projetoId) return NextResponse.json({ error: "projetoId obrigatório" }, { status: 400 });
 
@@ -16,7 +16,6 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   const data = parsed.data;
-
   const count = await prisma.tarefa.count({ where: { projetoId, status: data.status } });
 
   const tarefa = await prisma.tarefa.create({
@@ -29,12 +28,24 @@ export async function POST(req: NextRequest) {
       dataVenc: data.dataVenc ? new Date(data.dataVenc) : null,
       projetoId,
       parentId: data.parentId || null,
+      creatorId: session.user.id,
       responsaveis: {
         create: data.responsaveis.map((userId) => ({ userId })),
       },
+      ...(anexos?.length && {
+        anexos: {
+          create: anexos.map((a: { url: string; nome: string; tamanho: number; tipo: string }) => ({
+            url: a.url,
+            nome: a.nome,
+            tamanho: a.tamanho,
+            tipo: a.tipo,
+          })),
+        },
+      }),
     },
     include: {
       responsaveis: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } } } },
+      anexos: true,
       _count: { select: { subtarefas: true, comentarios: true } },
     },
   });

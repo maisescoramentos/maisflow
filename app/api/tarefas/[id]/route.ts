@@ -12,6 +12,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     include: {
       projeto: { select: { id: true, nome: true, cor: true } },
       responsaveis: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } } } },
+      anexos: true,
       subtarefas: {
         include: {
           responsaveis: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } } } },
@@ -34,10 +35,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   const { id } = await params;
 
-  const body = await req.json();
-  const { responsaveis, ...data } = body;
+  const tarefa = await prisma.tarefa.findUnique({ where: { id }, select: { creatorId: true } });
+  if (!tarefa) return NextResponse.json({ error: "Não encontrada" }, { status: 404 });
 
-  const tarefa = await prisma.tarefa.update({
+  const podeEditar = !tarefa.creatorId || tarefa.creatorId === session.user.id || session.user.role === "ADMIN";
+  if (!podeEditar) return NextResponse.json({ error: "Apenas o criador pode editar esta tarefa" }, { status: 403 });
+
+  const body = await req.json();
+  const { responsaveis, anexos, ...data } = body;
+
+  const updated = await prisma.tarefa.update({
     where: { id },
     data: {
       ...(data.titulo && { titulo: data.titulo }),
@@ -52,20 +59,35 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           create: responsaveis.map((userId: string) => ({ userId })),
         },
       }),
+      ...(anexos && {
+        anexos: {
+          deleteMany: {},
+          create: anexos.map((a: { url: string; nome: string; tamanho: number; tipo: string }) => ({
+            url: a.url, nome: a.nome, tamanho: a.tamanho, tipo: a.tipo,
+          })),
+        },
+      }),
     },
     include: {
       responsaveis: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } } } },
+      anexos: true,
       _count: { select: { subtarefas: true, comentarios: true } },
     },
   });
 
-  return NextResponse.json(tarefa);
+  return NextResponse.json(updated);
 }
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   const { id } = await params;
+
+  const tarefa = await prisma.tarefa.findUnique({ where: { id }, select: { creatorId: true } });
+  if (!tarefa) return NextResponse.json({ error: "Não encontrada" }, { status: 404 });
+
+  const podeExcluir = !tarefa.creatorId || tarefa.creatorId === session.user.id || session.user.role === "ADMIN";
+  if (!podeExcluir) return NextResponse.json({ error: "Apenas o criador pode excluir esta tarefa" }, { status: 403 });
 
   await prisma.tarefa.delete({ where: { id } });
   return NextResponse.json({ ok: true });

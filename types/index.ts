@@ -54,12 +54,25 @@ export interface TarefaComDetalhes {
   responsaveis: { user: UserBasico }[];
   subtarefas?: TarefaComDetalhes[];
   comentarios?: ComentarioComAutor[];
+  anexos?: Anexo[];
+  creatorId?: string | null;
   _count?: { subtarefas: number; comentarios: number };
+}
+
+export interface Anexo {
+  id: string;
+  nome: string;
+  url: string;
+  tamanho: number;
+  tipo: string;
 }
 
 export interface ComentarioComAutor {
   id: string;
   conteudo: string;
+  anexoUrl: string | null;
+  anexoNome: string | null;
+  anexoTipo: string | null;
   createdAt: Date;
   updatedAt: Date;
   user: UserBasico;
